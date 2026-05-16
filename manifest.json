@@ -1,0 +1,11 @@
+{
+    "display_name": "번역문 내보내기",
+    "loading_order": 10,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "custom",
+    "version": "1.0.0",
+    "auto_update": true
+}
