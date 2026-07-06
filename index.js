@@ -1,6 +1,4 @@
 // ===================================================================
-// 번역문 내보내기 (translation-copy)
-// 번역문(message.extra.display_text)과
 // 원문(message.mes)을 범위 지정하여 클립보드 복사 / txt 저장하는 확장
 // ===================================================================
 
@@ -21,19 +19,11 @@ function getLastIndex() {
     }
 }
 
-/**
- * 원문(msg.mes) 처리 - 순수 텍스트이므로 정규식 기반
- * 'keep'   - 원본 그대로
- * 'strip'  - 코드블록 제거 + HTML 태그 제거, 텍스트 보존
- * 'remove' - 코드블록 제거 + XML/HTML 태그+내용 전체 제거
- */
 function applyHtmlModeToOriginal(text, htmlMode) {
     if (!text) return text;
     if (htmlMode === 'keep') return text;
 
-    // 1. 마크다운 코드블록 통째로 제거
     let result = text.replace(/```[\s\S]*?```/g, '');
-    // 2. {{img::...}} 제거
     result = result.replace(/\{\{img::[^}]*\}\}/gi, '');
 
     if (htmlMode === 'remove') {
@@ -46,30 +36,15 @@ function applyHtmlModeToOriginal(text, htmlMode) {
         return result.trim() || null;
     }
 
-    // strip: 태그만 제거
     result = result.replace(/<[^>]+>/g, '');
     return result.trim() || result;
 }
 
-/**
- * 번역문(msg.extra.display_text) 처리
- * llm-translator는 display_text를 HTML로 렌더링해서 저장함
- * 마크다운 코드블록은 <pre><code>...</code></pre> 형태로 변환되어 있음
- * <status>/<choices> 등 커스텀 태그는 비표준이라 브라우저 DOM이 내용을 노출시킴
- *
- * 'keep'   - 원본 그대로
- * 'strip'  - 정규식으로 커스텀 태그 블록 제거 후,
- *            DOM에서 pre/code/script/style 제거 후 innerText 추출
- * 'remove' - 정규식으로 커스텀 태그 블록 먼저 제거 후,
- *            DOM에서 pre/code/script/style 제거 후 innerText 추출
- *            → 결과적으로 커스텀 태그 내용 + 코드블록 모두 제거
- */
 function applyHtmlModeToTranslation(text, htmlMode) {
     if (!text) return null;
     if (htmlMode === 'keep') return text;
 
     if (htmlMode === 'remove') {
-        // 태그+내용 전체 제거: 정규식으로 <태그>...</태그> 반복 제거
         let result = text;
         let prev;
         do {
@@ -81,9 +56,6 @@ function applyHtmlModeToTranslation(text, htmlMode) {
         return result.trim() || null;
     }
 
-    // 'strip': 태그 기호만 제거, 내용 보존
-    // display_text는 이미 HTML 렌더링된 형태 → DOM innerText로 추출
-    // 단, <pre>/<code>/<script>/<style>은 코드블록이므로 통째로 제거
     const tmp = document.createElement('div');
     tmp.innerHTML = text;
     ['pre', 'code', 'script', 'style'].forEach(sel => {
@@ -94,11 +66,6 @@ function applyHtmlModeToTranslation(text, htmlMode) {
     return result.trim() || result;
 }
 
-
-
-
-
-
 // ─────────────────────────────────────────────
 // 공백 정리 (HTML 잔재 스페이스/탭 줄 제거 후 연속 빈 줄 압축)
 // ─────────────────────────────────────────────
@@ -108,9 +75,9 @@ function cleanupWhitespace(text) {
     return text
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
-        .replace(/[ \t]+$/gm, '')        // 각 줄 끝 스페이스/탭 제거
-        .replace(/^[ \t]+$/gm, '')       // 스페이스/탭만 있는 줄 → 빈 줄
-        .replace(/\n{3,}/g, '\n\n')      // 3줄 이상 빈 줄 → 2줄로
+        .replace(/[ \t]+$/gm, '')
+        .replace(/^[ \t]+$/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
 
@@ -118,11 +85,6 @@ function cleanupWhitespace(text) {
 // 핵심: 범위 내 메시지 수집
 // ─────────────────────────────────────────────
 
-/**
- * 한 메시지를 지정된 contentMode로 포맷팅
- * contentMode: 'translation' | 'original' | 'both' | 'exclude'
- * 반환: 문자열 배열(여러 줄) 또는 null(제외/내용없음)
- */
 function formatMessage(i, msg, contentMode, htmlMode) {
     if (contentMode === 'exclude') return null;
 
@@ -138,24 +100,13 @@ function formatMessage(i, msg, contentMode, htmlMode) {
     } else { // 'both'
         out.push(`[${i}] ${name}:`);
         out.push(`[원문]\n${original}`);
-        out.push('');  // 원문과 번역 사이 한 줄 공백
+        out.push('');
         out.push(`[번역]\n${translation ?? '(번역 없음)'}`);
         out.push('');
     }
     return out;
 }
 
-/**
- * @param modeConf 일괄 또는 발신자별 설정 객체
- *   { type: 'uniform', mode } 또는
- *   { type: 'bySender', userMode, aiMode }
- *
- * 발신자 구분 기준:
- *   - 유저 메시지: msg.is_user === true (사용자가 직접 입력한 것)
- *   - AI/기타 메시지: msg.is_user !== true
- *       (AI 답변 + /gen, /send 등 슬래시 명령 생성물 + 시스템 메시지 전부 포함)
- *   이렇게 하면 {{char}} 이름이 아닌 메시지도 안전하게 AI 쪽으로 분류됨
- */
 function collectMessages(start, end, modeConf, hiddenMode, htmlMode) {
     const ctx = getContext();
     if (!ctx?.chat?.length) {
@@ -171,7 +122,6 @@ function collectMessages(start, end, modeConf, hiddenMode, htmlMode) {
         const msg = chat[i];
         if (!msg) continue;
 
-        // SillyTavern /hide: is_system + DOM display:none 이중 검증
         const isSystemHidden = !!msg.is_system;
         const domEl = document.querySelector(`#chat .mes[mesid="${i}"]`);
         const isDomHidden = domEl
@@ -182,7 +132,6 @@ function collectMessages(start, end, modeConf, hiddenMode, htmlMode) {
         if (hiddenMode === 'skip' && isHidden) continue;
         if (hiddenMode === 'only' && !isHidden) continue;
 
-        // 발신자별 모드면 메시지 주체에 따라 contentMode 결정
         let contentMode;
         if (modeConf.type === 'bySender') {
             const isUser = msg.is_user === true;
@@ -270,7 +219,6 @@ function getInputValues() {
     const hiddenMode = $('#tranexp_hidden').val() || 'skip';
     const htmlMode   = $('#tranexp_html').val()   || 'strip';
 
-    // 일괄 / 발신자별 분기
     const applyType = $('#tranexp_applytype').val() || 'uniform';
     let modeConf;
     if (applyType === 'bySender') {
@@ -282,6 +230,58 @@ function getInputValues() {
         modeConf = { type: 'uniform', mode };
     }
     return { start, end, modeConf, hiddenMode, htmlMode };
+}
+
+// ─────────────────────────────────────────────
+// 단어 치환
+// ─────────────────────────────────────────────
+
+let slotIdCounter = 0;
+
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function applySlotReplacement($slot) {
+    const $preview = $('#tranexp_preview');
+    const current = $preview.val();
+    if (!current.trim()) {
+        toastr.warning("먼저 '불러오기'로 미리보기에 내용을 표시하세요.");
+        return;
+    }
+    const from = $slot.find('.tranexp_slot_from').val();
+    const to = $slot.find('.tranexp_slot_to').val() ?? '';
+    if (from === '' || from == null) {
+        toastr.warning('찾을 단어를 입력하세요.');
+        return;
+    }
+    const re = new RegExp(escapeRegExp(from), 'g');
+    const replaced = current.replace(re, to);
+    if (replaced === current) {
+        toastr.info('바꿀 대상이 없습니다.');
+        return;
+    }
+    $preview.prop('readonly', false);
+    $preview.val(replaced);
+    $preview.prop('readonly', true);
+    toastr.success('치환 적용됨');
+}
+
+function addReplacementSlot() {
+    const id = ++slotIdCounter;
+    const slotHtml = `
+<div class="tranexp_slot" data-id="${id}">
+    <input type="text" class="tranexp_slot_from" placeholder="찾을 단어" />
+    <span class="tranexp_slot_arrow">→</span>
+    <input type="text" class="tranexp_slot_to" placeholder="바꿀 단어" />
+    <button class="tranexp_slot_btn tranexp_slot_apply" title="지금 미리보기에 치환 적용">✓</button>
+    <button class="tranexp_slot_btn tranexp_slot_delete" title="슬롯 삭제">✗</button>
+</div>`;
+    const $slot = $(slotHtml);
+    $('#tranexp_slot_list').append($slot);
+
+    $slot.find('.tranexp_slot_apply').on('click', () => applySlotReplacement($slot));
+    $slot.find('.tranexp_slot_delete').on('click', () => $slot.remove());
 }
 
 // ─────────────────────────────────────────────
@@ -311,8 +311,6 @@ function handleCleanup() {
 }
 
 function getTextForExport(vals) {
-    // 미리보기에 내용이 있으면 그걸 우선 사용 (공백 정리 등 편집 반영)
-    // 없으면 새로 수집
     const preview = $('#tranexp_preview').val();
     if (preview && preview.trim()) return preview;
     return collectMessages(vals.start, vals.end, vals.modeConf, vals.hiddenMode, vals.htmlMode);
@@ -422,6 +420,18 @@ async function loadSettingsUI() {
                 <button id="tranexp_btn_clear" class="menu_button tranexp_small_btn tranexp_clear_btn">🗑 비우기</button>
             </div>
 
+            <!-- 단어 치환 (접힘 메뉴) -->
+            <div class="tranexp_replace_wrap">
+                <div class="tranexp_replace_header" id="tranexp_replace_toggle">
+                    <span class="tranexp_replace_arrow">▶</span>
+                    <b>단어 치환</b>
+                </div>
+                <div class="tranexp_replace_body" id="tranexp_replace_body" style="display:none;">
+                    <div id="tranexp_slot_list"></div>
+                    <button id="tranexp_btn_add_slot" class="menu_button tranexp_small_btn">＋ 슬롯 추가</button>
+                </div>
+            </div>
+
             <!-- 실행 버튼 -->
             <div class="tranexp_action_row">
                 <button id="tranexp_btn_copy" class="menu_button">📋 클립보드 복사</button>
@@ -441,12 +451,19 @@ async function loadSettingsUI() {
     $('#tranexp_btn_preview').on('click', handleLoadPreview);
     $('#tranexp_btn_cleanup').on('click', handleCleanup);
 
+    $('#tranexp_replace_toggle').on('click', () => {
+        const $body = $('#tranexp_replace_body');
+        const isHidden = $body.is(':hidden');
+        $body.toggle();
+        $('.tranexp_replace_arrow').text(isHidden ? '▼' : '▶');
+    });
+    $('#tranexp_btn_add_slot').on('click', addReplacementSlot);
+
     $('#tranexp_btn_clear').on('click', () => {
         $('#tranexp_preview').val('');
         toastr.info('미리보기를 비웠습니다.');
     });
 
-    // 적용 방식(일괄/발신자별) 전환 시 하위 메뉴 토글
     $('#tranexp_applytype').on('change', function () {
         const isBySender = $(this).val() === 'bySender';
         if (isBySender) {
