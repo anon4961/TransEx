@@ -143,3 +143,100 @@
     flex: 1;
     min-width: 120px;
 }
+
+/* ── 단어 치환 접힘 메뉴 ── */
+.tranexp_replace_wrap {
+    margin-top: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.tranexp_replace_header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    background-color: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.15));
+    font-size: 0.9em;
+    user-select: none;
+}
+
+.tranexp_replace_header:hover {
+    background-color: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.25));
+}
+
+.tranexp_replace_arrow {
+    font-size: 0.8em;
+    color: var(--SmartThemeBodyColor, #ccc);
+}
+
+.tranexp_replace_body {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#tranexp_slot_list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ── 치환 슬롯 한 줄 ── */
+.tranexp_slot {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tranexp_slot_from,
+.tranexp_slot_to {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 0.85em;
+    color: var(--SmartThemeBodyColor, #ddd);
+    background-color: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 4px;
+}
+
+.tranexp_slot_from:focus,
+.tranexp_slot_to:focus {
+    outline: none;
+    border-color: var(--SmartThemeQuoteColor, #8ab4f8);
+}
+
+.tranexp_slot_arrow {
+    color: var(--SmartThemeBodyColor, #999);
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.tranexp_slot_btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    font-size: 0.9em;
+    line-height: 1;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 4px;
+    background-color: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.2));
+    color: var(--SmartThemeBodyColor, #ccc);
+    cursor: pointer;
+}
+
+.tranexp_slot_apply:hover {
+    color: #6dd36d;
+    border-color: #6dd36d;
+}
+
+.tranexp_slot_delete:hover {
+    color: #e06666;
+    border-color: #e06666;
+}
