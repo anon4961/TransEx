@@ -295,6 +295,41 @@ function handleLoadPreview() {
     if (text !== null) $('#tranexp_preview').val(text);
 }
 
+function handleLoadLastAiMessage() {
+    const ctx = getContext();
+    if (!ctx?.chat?.length) {
+        toastr.error('현재 채팅이 없습니다.');
+        return;
+    }
+
+    const chat = ctx.chat;
+    let targetIdx = -1;
+    for (let i = chat.length - 1; i >= 0; i--) {
+        const msg = chat[i];
+        if (!msg) continue;
+        if (msg.is_user !== true) {
+            targetIdx = i;
+            break;
+        }
+    }
+
+    if (targetIdx === -1) {
+        toastr.warning('AI 메시지를 찾을 수 없습니다.');
+        return;
+    }
+
+    $('#tranexp_start').val(targetIdx);
+    $('#tranexp_end').val(targetIdx);
+
+    const vals = getInputValues();
+    if (!vals) return;
+    const text = collectMessages(targetIdx, targetIdx, vals.modeConf, vals.hiddenMode, vals.htmlMode);
+    if (text !== null) {
+        $('#tranexp_preview').val(text);
+        toastr.success(`마지막 AI 메시지(${targetIdx}번)를 불러왔습니다.`);
+    }
+}
+
 function handleCleanup() {
     const $preview = $('#tranexp_preview');
     const current = $preview.val();
@@ -413,6 +448,7 @@ async function loadSettingsUI() {
             <div class="tranexp_row">
                 <span class="tranexp_label">미리보기</span>
                 <button id="tranexp_btn_preview" class="menu_button tranexp_small_btn">불러오기</button>
+                <button id="tranexp_btn_last_ai" class="menu_button tranexp_small_btn" title="가장 최신 AI 메시지만 불러오기">🤖 마지막 메시지</button>
             </div>
             <textarea id="tranexp_preview" class="tranexp_preview_area" readonly placeholder="'불러오기' 버튼을 눌러 내용을 확인하세요."></textarea>
             <div class="tranexp_clear_row">
@@ -449,6 +485,7 @@ async function loadSettingsUI() {
     });
 
     $('#tranexp_btn_preview').on('click', handleLoadPreview);
+    $('#tranexp_btn_last_ai').on('click', handleLoadLastAiMessage);
     $('#tranexp_btn_cleanup').on('click', handleCleanup);
 
     $('#tranexp_replace_toggle').on('click', () => {
